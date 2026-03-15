@@ -578,12 +578,15 @@ function textToPoints(text) {
   if (maxX <= minX) { createSphere(); return; }
 
   // ── 6. Recompute scale from actual pixel bbox ─────────────────
-  // Camera: FOV=60°, z=110 → halfH = tan(30°)*110 ≈ 63.5
-  // halfW = halfH * aspectRatio — leave 10% margin each side
-  const halfH  = Math.tan(Math.PI / 6) * 110;
-  const halfW  = halfH * (innerWidth / innerHeight);
-  const usableW = halfW * 1.8;   // 90% of full width
-  const usableH = halfH * 0.85;  // leave room for UI at bottom
+  // Use camera live state — correct even when keyboard opens on mobile.
+  // DO NOT use innerWidth/innerHeight here: on iOS the keyboard shrinks
+  // innerHeight mid-session, making the ratio wrong. camera.aspect is
+  // always synced by the resize handler, so it is the single source of truth.
+  const vFovRad = camera.fov * (Math.PI / 180);
+  const visH    = 2 * Math.tan(vFovRad / 2) * camera.position.z;
+  const visW    = visH * camera.aspect;
+  const usableW = visW * 0.78;  // 78% — safe margin left/right
+  const usableH = visH * 0.62;  // 62% — leaves room for UI at bottom
 
   const bboxW = maxX - minX;
   const bboxH = maxY - minY;
