@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>SearchGet — Quick Ending System</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Rajdhani:wght@300;400;500&display=swap" rel="stylesheet">
@@ -154,7 +154,7 @@
     padding: 16px 28px;
     color: rgba(255,255,255,0.9);
     font-family: 'Orbitron', sans-serif;
-    font-size: 0.78rem;
+    font-size: 16px; /* must be ≥16px — prevents iOS Safari auto-zoom on focus */
     font-weight: 600;
     letter-spacing: 0.2em;
     outline: none;
@@ -327,8 +327,21 @@
   /* ── Mobile ──────────────────────────────────────── */
   @media (max-width: 600px) {
     .ui-panel { max-width: 100%; bottom: 44px; }
-    #text-input { font-size: 0.72rem; padding: 14px 20px; }
-    #transform-btn { padding: 0 18px; font-size: 0.58rem; }
+
+    /* Scale the input DOWN visually — but font-size stays 16px so iOS won't zoom.
+       transform:scale shrinks appearance without triggering the zoom trigger. */
+    .input-group {
+      transform-origin: center;
+    }
+    #text-input {
+      font-size: 16px;  /* keep at 16px — non-negotiable for iOS */
+      padding: 14px 16px;
+      letter-spacing: 0.1em;
+    }
+    #transform-btn { padding: 0 16px; font-size: 0.58rem; }
+
+    /* Prevent canvas from being tappable in a way that triggers browser UI */
+    #canvas-container { touch-action: none; }
   }
 </style>
 </head>
@@ -662,6 +675,24 @@ window.addEventListener('touchmove', e => {
 window.addEventListener('touchend', () => {
   mouse3D.set(-9999, -9999, 0);
 });
+
+// ── Prevent ALL browser zoom gestures on mobile ───────────────
+// Blocks pinch-zoom (gesturestart) and double-tap zoom (touchstart rapid)
+document.addEventListener('gesturestart',  e => e.preventDefault());
+document.addEventListener('gesturechange', e => e.preventDefault());
+document.addEventListener('gestureend',    e => e.preventDefault());
+
+let lastTap = 0;
+document.addEventListener('touchstart', e => {
+  // Block double-tap zoom — allow normal single taps through
+  if (e.touches.length > 1) {
+    e.preventDefault(); // pinch = more than 1 finger
+    return;
+  }
+  const now = Date.now();
+  if (now - lastTap < 300) e.preventDefault(); // double-tap
+  lastTap = now;
+}, { passive: false });
 
 // ── Animation loop ────────────────────────────────────────────
 const clock = new THREE.Clock();
