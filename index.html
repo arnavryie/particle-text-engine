@@ -1,407 +1,792 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SearchGet - Quick Ending System</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <style>
-        :root {
-            --neon-blue: #00f2ff;
-            --deep-space: #010103;
-            --glow-gold: #ffdd00;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SearchGet — Quick Ending System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;900&family=Rajdhani:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root {
+    --black:    #000005;
+    --c1: #00f2ff;
+    --c2: #ff003c;
+    --c3: #bf00ff;
+    --c4: #ff6600;
+    --glass-bg: rgba(255,255,255,0.04);
+    --glass-border: rgba(255,255,255,0.12);
+    --glow-size: 220px;
+  }
 
-        *, *::before, *::after {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--deep-space);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            touch-action: none;
-        }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: var(--black);
+    font-family: 'Rajdhani', sans-serif;
+    touch-action: none;
+    cursor: none;
+  }
 
-        #canvas-container {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
+  /* ── Custom cursor ─────────────────────────────── */
+  #cursor {
+    position: fixed;
+    width: 12px; height: 12px;
+    background: var(--c1);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: background 0.3s, transform 0.1s;
+    box-shadow: 0 0 14px 4px var(--c1);
+    mix-blend-mode: screen;
+  }
+  #cursor-ring {
+    position: fixed;
+    width: var(--glow-size); height: var(--glow-size);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9998;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(0,242,255,0.06) 0%, transparent 70%);
+    transition: background 0.4s;
+  }
 
-        .ui-panel {
-            position: absolute;
-            bottom: 40px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 20px;
-            width: 100%;
-            max-width: 500px;
-            padding: 0 20px;
-            pointer-events: none;
-        }
+  /* ── Canvas ─────────────────────────────────────── */
+  #canvas-container {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
 
-        .input-group {
-            display: flex;
-            width: 100%;
-            background: rgba(255, 255, 255, 0.05);
-            backdrop-filter: blur(15px);
-            border: 1px solid rgba(0, 242, 255, 0.3);
-            border-radius: 50px;
-            overflow: hidden;
-            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
-            transition: all 0.3s ease;
-            pointer-events: auto;
-        }
+  /* ── Top title ──────────────────────────────────── */
+  #top-title {
+    position: absolute;
+    top: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    text-align: center;
+    opacity: 0;
+    animation: fadeUp 1.2s 0.6s ease forwards;
+  }
+  #top-title h1 {
+    font-family: 'Orbitron', sans-serif;
+    font-size: clamp(0.65rem, 1.4vw, 0.9rem);
+    font-weight: 900;
+    letter-spacing: 0.35em;
+    color: rgba(255,255,255,0.12);
+    text-transform: uppercase;
+  }
 
-        .input-group:focus-within {
-            border-color: var(--neon-blue);
-            box-shadow: 0 0 40px rgba(0, 242, 255, 0.25);
-        }
+  /* ── UI Panel ───────────────────────────────────── */
+  .ui-panel {
+    position: absolute;
+    bottom: 52px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+    max-width: 520px;
+    padding: 0 24px;
+    opacity: 0;
+    animation: fadeUp 1.2s 1s ease forwards;
+  }
 
-        input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            padding: 15px 25px;
-            color: white;
-            font-size: 1.1rem;
-            outline: none;
-            letter-spacing: 1px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+  /* ── Status line ────────────────────────────────── */
+  #status-line {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.6rem;
+    letter-spacing: 0.3em;
+    color: rgba(255,255,255,0.25);
+    text-transform: uppercase;
+    height: 14px;
+    transition: color 0.4s;
+  }
 
-        input::placeholder {
-            color: rgba(255, 255, 255, 0.4);
-        }
+  /* ── Input group ────────────────────────────────── */
+  .input-wrap {
+    width: 100%;
+    position: relative;
+  }
+  .input-group {
+    display: flex;
+    width: 100%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 60px;
+    overflow: hidden;
+    transition: border-color 0.4s, box-shadow 0.4s;
+    position: relative;
+  }
+  .input-group::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 60px;
+    background: linear-gradient(90deg, transparent 0%, rgba(0,242,255,0.03) 50%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.4s;
+    pointer-events: none;
+  }
+  .input-group:focus-within {
+    border-color: rgba(0,242,255,0.5);
+    box-shadow:
+      0 0 0 1px rgba(0,242,255,0.15),
+      0 0 40px rgba(0,242,255,0.12),
+      0 0 80px rgba(0,242,255,0.05),
+      inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .input-group:focus-within::before { opacity: 1; }
 
-        button {
-            background: var(--neon-blue);
-            color: black;
-            border: none;
-            padding: 0 30px;
-            font-weight: bold;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            transition: all 0.3s ease;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            font-size: 0.85rem;
-        }
+  #text-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 16px 28px;
+    color: rgba(255,255,255,0.9);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    outline: none;
+    text-transform: uppercase;
+    caret-color: var(--c1);
+  }
+  #text-input::placeholder {
+    color: rgba(255,255,255,0.2);
+    font-weight: 400;
+    letter-spacing: 0.15em;
+  }
 
-        button:hover {
-            background: white;
-            box-shadow: 0 0 20px white;
-        }
+  #transform-btn {
+    background: transparent;
+    color: var(--c1);
+    border: none;
+    border-left: 1px solid var(--glass-border);
+    padding: 0 28px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    cursor: none;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+  }
+  #transform-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(0,242,255,0.12), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s ease;
+  }
+  #transform-btn:hover {
+    color: #fff;
+    background: rgba(0,242,255,0.1);
+    text-shadow: 0 0 20px var(--c1);
+    box-shadow: inset 0 0 30px rgba(0,242,255,0.08);
+  }
+  #transform-btn:hover::before { transform: translateX(100%); }
+  #transform-btn:active { transform: scale(0.97); }
 
-        #loading-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            color: var(--neon-blue);
-            letter-spacing: 5px;
-            font-weight: bold;
-            font-size: 1rem;
-            transition: opacity 0.5s ease;
-        }
+  /* ── Reset pill ─────────────────────────────────── */
+  #reset-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 30px;
+    color: rgba(255,255,255,0.3);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.52rem;
+    letter-spacing: 0.2em;
+    padding: 6px 20px;
+    cursor: none;
+    text-transform: uppercase;
+    transition: all 0.3s;
+    opacity: 0;
+    pointer-events: none;
+  }
+  #reset-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  #reset-btn:hover {
+    border-color: rgba(255,100,100,0.4);
+    color: rgba(255,100,100,0.7);
+  }
 
-        #text-canvas {
-            display: none;
-        }
+  /* ── Credit line ────────────────────────────────── */
+  #credit {
+    position: absolute;
+    bottom: 18px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 20;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.5rem;
+    letter-spacing: 0.4em;
+    color: rgba(255,255,255,0.1);
+    text-transform: uppercase;
+    white-space: nowrap;
+    opacity: 0;
+    animation: fadeUp 1s 2s ease forwards;
+    transition: color 0.4s;
+  }
+  #credit:hover { color: rgba(255,255,255,0.35); }
+  #credit span {
+    color: rgba(0,242,255,0.4);
+  }
 
-        .footer-text {
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 0.7rem;
-            letter-spacing: 2px;
-            pointer-events: auto;
-        }
-    </style>
+  /* ── Scan line overlay ──────────────────────────── */
+  #scanlines {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    opacity: 0.4;
+  }
+
+  /* ── Vignette ───────────────────────────────────── */
+  #vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,5,0.7) 100%);
+  }
+
+  /* ── Loading screen ─────────────────────────────── */
+  #loading-screen {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    gap: 24px;
+    transition: opacity 0.8s ease;
+  }
+  #loading-screen.hidden { opacity: 0; pointer-events: none; }
+  .load-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.5em;
+    color: rgba(0,242,255,0.7);
+  }
+  .load-bar-wrap {
+    width: 200px;
+    height: 2px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .load-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--c3), var(--c1));
+    border-radius: 2px;
+    width: 0%;
+    animation: loadAnim 1.2s ease forwards;
+    box-shadow: 0 0 12px var(--c1);
+  }
+
+  /* ── Animations ─────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateX(-50%) translateY(12px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }
+  @keyframes loadAnim {
+    0%   { width: 0%; }
+    60%  { width: 75%; }
+    100% { width: 100%; }
+  }
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.25; }
+    50%       { opacity: 0.55; }
+  }
+
+  /* ── Mobile ──────────────────────────────────────── */
+  @media (max-width: 600px) {
+    .ui-panel { max-width: 100%; bottom: 44px; }
+    #text-input { font-size: 0.72rem; padding: 14px 20px; }
+    #transform-btn { padding: 0 18px; font-size: 0.58rem; }
+  }
+</style>
 </head>
 <body>
 
-    <div id="loading-screen">SYSTEM LOADING...</div>
+<!-- Custom cursor -->
+<div id="cursor"></div>
+<div id="cursor-ring"></div>
 
-    <div class="ui-panel">
-        <div class="input-group">
-            <input type="text" id="text-input" placeholder="Enter the summer..." maxlength="15" autocomplete="off">
-            <button id="transform-btn">CONTINUE</button>
-        </div>
-        <span class="footer-text">SEARCHGET · QUICK ENDING SYSTEM</span>
+<!-- Overlays -->
+<div id="scanlines"></div>
+<div id="vignette"></div>
+
+<!-- Loading -->
+<div id="loading-screen">
+  <div class="load-title">INITIALIZING SYSTEM</div>
+  <div class="load-bar-wrap"><div class="load-bar"></div></div>
+</div>
+
+<!-- Top label -->
+<div id="top-title">
+  <h1>SearchGet &nbsp;·&nbsp; Quick Ending System</h1>
+</div>
+
+<!-- Canvas -->
+<div id="canvas-container"></div>
+
+<!-- Hidden canvas for text rasterization -->
+<canvas id="text-canvas" style="display:none" width="2400" height="200"></canvas>
+
+<!-- UI -->
+<div class="ui-panel">
+  <div id="status-line">SPHERE FORMATION ACTIVE</div>
+  <div class="input-wrap">
+    <div class="input-group">
+      <input type="text" id="text-input" placeholder="Enter the void…" maxlength="15" autocomplete="off" spellcheck="false">
+      <button id="transform-btn">Execute</button>
     </div>
+  </div>
+  <button id="reset-btn">↺ Reset Sphere</button>
+</div>
 
-    <canvas id="text-canvas" width="1200" height="150"></canvas>
-    <div id="canvas-container"></div>
+<!-- Credit -->
+<div id="credit">Created by &nbsp;<span>arnavryie</span></div>
 
-    <script>
-        const textInput = document.getElementById('text-input');
-        const transformBtn = document.getElementById('transform-btn');
-        const loadingScreen = document.getElementById('loading-screen');
-        const textCanvas = document.getElementById('text-canvas');
-        const tCtx = textCanvas.getContext('2d');
+<script>
+/* ================================================================
+   SEARCHGET — QUICK ENDING SYSTEM  ·  v2 Premium
+   ================================================================ */
 
-        // Scene setup
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        document.getElementById('canvas-container').appendChild(renderer.domElement);
+// ── DOM refs ───────────────────────────────────────────────────
+const textInput    = document.getElementById('text-input');
+const transformBtn = document.getElementById('transform-btn');
+const resetBtn     = document.getElementById('reset-btn');
+const loadingEl    = document.getElementById('loading-screen');
+const textCanvas   = document.getElementById('text-canvas');
+const statusLine   = document.getElementById('status-line');
+const cursorDot    = document.getElementById('cursor');
+const cursorRing   = document.getElementById('cursor-ring');
+const tCtx         = textCanvas.getContext('2d');
 
-        // Particle config
-        const particleCount = 45000;
-        const positions = new Float32Array(particleCount * 3);
-        const targetPositions = new Float32Array(particleCount * 3);
-        const velocities = new Float32Array(particleCount * 3);
-        const colors = new Float32Array(particleCount * 3);
-        const geometry = new THREE.BufferGeometry();
+// ── Three.js setup ─────────────────────────────────────────────
+const scene    = new THREE.Scene();
+const camera   = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 2000);
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x000005, 1);
+document.getElementById('canvas-container').appendChild(renderer.domElement);
+camera.position.z = 110;
 
-        let isTextMode = false;
-        let mouse = new THREE.Vector3(-1000, -1000, 0);
+// ── Particle config ────────────────────────────────────────────
+const N          = 40000;
+const positions  = new Float32Array(N * 3);
+const targets    = new Float32Array(N * 3);
+const velocities = new Float32Array(N * 3);
+const colors     = new Float32Array(N * 3);
+const hueOffsets = new Float32Array(N);  // per-particle hue offset
+const phases     = new Float32Array(N);  // per-particle shimmer phase
 
-        const baseColor = new THREE.Color(0x00f2ff);
-        const goldColor = new THREE.Color(0xffdd00);
+const geometry = new THREE.BufferGeometry();
+geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+geometry.setAttribute('color',    new THREE.BufferAttribute(colors,    3));
 
-        // Default: sphere shape
-        function createSphere() {
-            isTextMode = false;
-            const radius = 30;
-            for (let i = 0; i < particleCount; i++) {
-                const i3 = i * 3;
-                const u = Math.random();
-                const v = Math.random();
-                const theta = 2 * Math.PI * u;
-                const phi = Math.acos(2 * v - 1);
+const material = new THREE.PointsMaterial({
+  size: 0.18,
+  vertexColors: true,
+  transparent: true,
+  opacity: 0.85,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  sizeAttenuation: true,
+});
+const pointsObj = new THREE.Points(geometry, material);
+scene.add(pointsObj);
 
-                targetPositions[i3]     = radius * Math.sin(phi) * Math.cos(theta);
-                targetPositions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
-                targetPositions[i3 + 2] = radius * Math.cos(phi);
-            }
-        }
+// ── State ──────────────────────────────────────────────────────
+let isTextMode   = false;
+let globalTime   = 0;
+let waveTime     = 0;
+let waveActive   = false;
+let waveDir      = 1;
+let mouse3D      = new THREE.Vector3(-9999, -9999, 0);
+let mouseScreen  = { x: -9999, y: -9999 };
+let breathePhase = 0;
+let transitionProgress = 0;
+let isTransitioning = false;
 
-        // Text mode: rearrange particles into text shape
-        function textToPoints(text) {
-            isTextMode = true;
-            const size = 150;
-            textCanvas.width = size * 8;
-            textCanvas.height = size;
+// Neon palette (HSL hues)
+const HUES = [185, 0, 270, 30, 300, 200, 45, 320];
 
-            tCtx.fillStyle = 'white';
-            tCtx.font = `bold 70px Arial`;
-            tCtx.textAlign = 'center';
-            tCtx.textBaseline = 'middle';
-            tCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
-            tCtx.fillText(text, textCanvas.width / 2, textCanvas.height / 2);
+// ── Init particle random positions ───────────────────────────
+for (let i = 0; i < N; i++) {
+  const i3 = i * 3;
+  positions[i3]     = (Math.random() - 0.5) * 600;
+  positions[i3 + 1] = (Math.random() - 0.5) * 600;
+  positions[i3 + 2] = (Math.random() - 0.5) * 600;
+  hueOffsets[i] = Math.random() * 360;
+  phases[i]     = Math.random() * Math.PI * 2;
+  const c = hslToRgb((hueOffsets[i] % 360) / 360, 1, 0.6);
+  colors[i3]     = c.r;
+  colors[i3 + 1] = c.g;
+  colors[i3 + 2] = c.b;
+}
 
-            const imageData = tCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
-            const pixels = imageData.data;
-            const points = [];
+// ── Helper: HSL → RGB ──────────────────────────────────────────
+function hslToRgb(h, s, l) {
+  let r, g, b;
+  if (s === 0) { r = g = b = l; }
+  else {
+    const hue2rgb = (p, q, t) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  return { r, g, b };
+}
 
-            for (let y = 0; y < textCanvas.height; y += 1) {
-                for (let x = 0; x < textCanvas.width; x += 1) {
-                    const alpha = pixels[(y * textCanvas.width + x) * 4 + 3];
-                    if (alpha > 128) {
-                        points.push({
-                            x: (x - textCanvas.width / 2) * 0.6,
-                            y: (textCanvas.height / 2 - y) * 0.6
-                        });
-                    }
-                }
-            }
+// ── Sphere formation ──────────────────────────────────────────
+function createSphere(breatheOffset = 0) {
+  isTextMode = false;
+  const baseR = 30 + breatheOffset;
+  for (let i = 0; i < N; i++) {
+    const i3 = i * 3;
+    const u = (i / N);
+    const v = Math.random();
+    const theta = 2 * Math.PI * u * 137.508; // golden angle distribution
+    const phi   = Math.acos(2 * v - 1);
+    targets[i3]     = baseR * Math.sin(phi) * Math.cos(theta);
+    targets[i3 + 1] = baseR * Math.sin(phi) * Math.sin(theta);
+    targets[i3 + 2] = baseR * Math.cos(phi);
+  }
+}
 
-            for (let i = 0; i < particleCount; i++) {
-                const i3 = i * 3;
-                const p = points[i % points.length];
-                const noise = 0.5;
-                targetPositions[i3]     = p.x + (Math.random() - 0.5) * noise;
-                targetPositions[i3 + 1] = p.y + (Math.random() - 0.5) * noise;
-                targetPositions[i3 + 2] = (Math.random() - 0.5) * noise;
-            }
-        }
+// ── Text → particle positions ─────────────────────────────────
+function textToPoints(text) {
+  isTextMode = true;
+  textCanvas.width  = 2400;
+  textCanvas.height = 200;
+  tCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+  tCtx.fillStyle = '#fff';
+  tCtx.font = 'bold 120px Orbitron, Arial';
+  tCtx.textAlign    = 'center';
+  tCtx.textBaseline = 'middle';
+  tCtx.fillText(text.toUpperCase(), textCanvas.width / 2, textCanvas.height / 2);
 
-        // Initialize particles scattered in space
-        for (let i = 0; i < particleCount; i++) {
-            const i3 = i * 3;
-            positions[i3]     = (Math.random() - 0.5) * 800;
-            positions[i3 + 1] = (Math.random() - 0.5) * 800;
-            positions[i3 + 2] = (Math.random() - 0.5) * 800;
+  const imageData = tCtx.getImageData(0, 0, textCanvas.width, textCanvas.height);
+  const px = imageData.data;
+  const points = [];
 
-            colors[i3]     = baseColor.r;
-            colors[i3 + 1] = baseColor.g;
-            colors[i3 + 2] = baseColor.b;
-        }
-        createSphere();
-
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-        const material = new THREE.PointsMaterial({
-            size: 0.15,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
+  // Sample every other pixel for performance
+  for (let y = 0; y < textCanvas.height; y += 1) {
+    for (let x = 0; x < textCanvas.width; x += 1) {
+      if (px[(y * textCanvas.width + x) * 4 + 3] > 100) {
+        points.push({
+          x: (x - textCanvas.width  / 2) * 0.38,
+          y: (textCanvas.height / 2 - y) * 0.38
         });
+      }
+    }
+  }
 
-        const pointsObj = new THREE.Points(geometry, material);
-        scene.add(pointsObj);
+  if (points.length === 0) { createSphere(); return; }
 
-        camera.position.z = 100;
+  // Shuffle points for random assignment feel
+  for (let i = points.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [points[i], points[j]] = [points[j], points[i]];
+  }
 
-        // Mouse tracking
-        window.addEventListener('mousemove', (e) => {
-            const rect = renderer.domElement.getBoundingClientRect();
-            const x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  for (let i = 0; i < N; i++) {
+    const i3 = i * 3;
+    const p   = points[i % points.length];
+    const nz  = 0.6;
+    targets[i3]     = p.x + (Math.random() - 0.5) * 0.3;
+    targets[i3 + 1] = p.y + (Math.random() - 0.5) * 0.3;
+    targets[i3 + 2] = (Math.random() - 0.5) * nz;
+  }
+}
 
-            const vector = new THREE.Vector3(x, y, 0.5);
-            vector.unproject(camera);
-            const dir = vector.sub(camera.position).normalize();
-            const distance = -camera.position.z / dir.z;
-            mouse = camera.position.clone().add(dir.multiplyScalar(distance));
-        });
+// ── Init sphere ───────────────────────────────────────────────
+createSphere();
 
-        // Touch support
-        window.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const rect = renderer.domElement.getBoundingClientRect();
-            const x = ((touch.clientX - rect.left) / rect.width) * 2 - 1;
-            const y = -((touch.clientY - rect.top) / rect.height) * 2 + 1;
+// ── Wave trigger ──────────────────────────────────────────────
+function triggerWave() {
+  waveActive = true;
+  waveTime   = 0;
+  waveDir    = Math.random() > 0.5 ? 1 : -1;
+}
+setInterval(triggerWave, 5000);
 
-            const vector = new THREE.Vector3(x, y, 0.5);
-            vector.unproject(camera);
-            const dir = vector.sub(camera.position).normalize();
-            const distance = -camera.position.z / dir.z;
-            mouse = camera.position.clone().add(dir.multiplyScalar(distance));
-        }, { passive: false });
+// ── Mouse tracking ────────────────────────────────────────────
+const _v3   = new THREE.Vector3();
+const _dir  = new THREE.Vector3();
 
-        // Main animation loop
-        function animate() {
-            requestAnimationFrame(animate);
+function updateMouse3D(cx, cy) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  const nx = ((cx - rect.left) / rect.width)  * 2 - 1;
+  const ny = -((cy - rect.top)  / rect.height) * 2 + 1;
+  _v3.set(nx, ny, 0.5).unproject(camera);
+  _dir.copy(_v3).sub(camera.position).normalize();
+  const dist = -camera.position.z / _dir.z;
+  mouse3D.copy(camera.position).addScaledVector(_dir, dist);
+}
 
-            const posAttr = geometry.attributes.position;
-            const colAttr = geometry.attributes.color;
+window.addEventListener('mousemove', e => {
+  mouseScreen.x = e.clientX;
+  mouseScreen.y = e.clientY;
+  cursorDot.style.left  = e.clientX + 'px';
+  cursorDot.style.top   = e.clientY + 'px';
+  cursorRing.style.left = e.clientX + 'px';
+  cursorRing.style.top  = e.clientY + 'px';
+  updateMouse3D(e.clientX, e.clientY);
+});
 
-            const mouseInfluenceRadius = isTextMode ? 15 : 25;
-            const lerpSpeed = 0.04;
-            const friction = 0.88;
+window.addEventListener('mouseleave', () => {
+  mouse3D.set(-9999, -9999, 0);
+});
 
-            for (let i = 0; i < particleCount; i++) {
-                const i3 = i * 3;
+window.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  updateMouse3D(t.clientX, t.clientY);
+}, { passive: false });
 
-                let tx = targetPositions[i3];
-                let ty = targetPositions[i3 + 1];
-                let tz = targetPositions[i3 + 2];
+window.addEventListener('touchend', () => {
+  mouse3D.set(-9999, -9999, 0);
+});
 
-                // Rotate target position for sphere mode
-                if (!isTextMode) {
-                    const angle = pointsObj.rotation.y;
-                    const cos = Math.cos(angle);
-                    const sin = Math.sin(angle);
-                    const rx = tx * cos + tz * sin;
-                    const rz = -tx * sin + tz * cos;
-                    tx = rx;
-                    tz = rz;
-                }
+// ── Animation loop ────────────────────────────────────────────
+const clock = new THREE.Clock();
 
-                // Mouse repulsion
-                const dx = posAttr.array[i3]     - mouse.x;
-                const dy = posAttr.array[i3 + 1] - mouse.y;
-                const dz = posAttr.array[i3 + 2] - mouse.z;
-                const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+function animate() {
+  requestAnimationFrame(animate);
 
-                if (dist < mouseInfluenceRadius) {
-                    const force = (mouseInfluenceRadius - dist) / mouseInfluenceRadius;
-                    velocities[i3]     += (dx / dist) * force * 1.2;
-                    velocities[i3 + 1] += (dy / dist) * force * 1.2;
-                    velocities[i3 + 2] += (dz / dist) * force * 1.2;
+  const delta = Math.min(clock.getDelta(), 0.05);
+  globalTime += delta;
+  breathePhase += delta * 0.4;
+  if (waveActive) waveTime += delta;
 
-                    // Gold color on mouse hover
-                    colAttr.array[i3]     += (goldColor.r - colAttr.array[i3])     * 0.15;
-                    colAttr.array[i3 + 1] += (goldColor.g - colAttr.array[i3 + 1]) * 0.15;
-                    colAttr.array[i3 + 2] += (goldColor.b - colAttr.array[i3 + 2]) * 0.15;
-                } else {
-                    // Return to neon blue
-                    colAttr.array[i3]     += (baseColor.r - colAttr.array[i3])     * 0.05;
-                    colAttr.array[i3 + 1] += (baseColor.g - colAttr.array[i3 + 1]) * 0.05;
-                    colAttr.array[i3 + 2] += (baseColor.b - colAttr.array[i3 + 2]) * 0.05;
-                }
+  const posAttr = geometry.attributes.position;
+  const colAttr = geometry.attributes.color;
 
-                // Apply velocity + friction
-                velocities[i3]     *= friction;
-                velocities[i3 + 1] *= friction;
-                velocities[i3 + 2] *= friction;
+  // Breathing for sphere mode
+  const breathe = Math.sin(breathePhase) * 1.8;
 
-                posAttr.array[i3]     += velocities[i3];
-                posAttr.array[i3 + 1] += velocities[i3 + 1];
-                posAttr.array[i3 + 2] += velocities[i3 + 2];
+  // Global color shift (cycles through hues every ~12s)
+  const globalHue = (globalTime * 18) % 360;
 
-                // Lerp toward target
-                posAttr.array[i3]     += (tx - posAttr.array[i3])     * lerpSpeed;
-                posAttr.array[i3 + 1] += (ty - posAttr.array[i3 + 1]) * lerpSpeed;
-                posAttr.array[i3 + 2] += (tz - posAttr.array[i3 + 2]) * lerpSpeed;
-            }
+  // Wave params
+  const waveSpeed    = 60;
+  const waveWidth    = 30;
+  const waveStrength = 3.5;
+  const waveFront    = waveTime * waveSpeed * waveDir;
 
-            posAttr.needsUpdate = true;
-            colAttr.needsUpdate = true;
+  const mRadius  = isTextMode ? 16 : 28;
+  const lerpSpd  = isTextMode ? 0.055 : 0.032;
+  const friction = 0.84;
 
-            // Rotate in sphere mode, stabilize in text mode
-            if (!isTextMode) {
-                pointsObj.rotation.y += 0.003;
-            } else {
-                pointsObj.rotation.y *= 0.95;
-            }
+  for (let i = 0; i < N; i++) {
+    const i3 = i * 3;
 
-            renderer.render(scene, camera);
-        }
+    let tx = targets[i3];
+    let ty = targets[i3 + 1];
+    let tz = targets[i3 + 2];
 
-        // Handle input transform
-        function handleTransform() {
-            const val = textInput.value.trim();
-            if (val === '') {
-                createSphere();
-            } else {
-                textToPoints(val);
-            }
-        }
+    // Sphere breathing: scale target outward
+    if (!isTextMode) {
+      const bScale = 1 + breathe / 30;
+      tx *= bScale;
+      ty *= bScale;
+      tz *= bScale;
 
-        transformBtn.addEventListener('click', handleTransform);
-        textInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleTransform();
-        });
+      // Ambient noise drift
+      const angle = pointsObj.rotation.y;
+      const cos = Math.cos(angle), sin = Math.sin(angle);
+      const rx = tx * cos + tz * sin;
+      const rz = -tx * sin + tz * cos;
+      tx = rx; tz = rz;
+    }
 
-        // Start
-        window.onload = () => {
-            loadingScreen.style.opacity = '0';
-            setTimeout(() => loadingScreen.style.display = 'none', 500);
-            animate();
-        };
+    // ── Mouse repulsion ──────────────────────────────
+    const dx = posAttr.array[i3]     - mouse3D.x;
+    const dy = posAttr.array[i3 + 1] - mouse3D.y;
+    const dz = posAttr.array[i3 + 2] - mouse3D.z;
+    const distSq = dx*dx + dy*dy + dz*dz;
+    const dist   = Math.sqrt(distSq) + 0.001;
 
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+    let pushed = false;
+    if (dist < mRadius) {
+      pushed = true;
+      const force = Math.pow((mRadius - dist) / mRadius, 1.6) * 2.2;
+      velocities[i3]     += (dx / dist) * force;
+      velocities[i3 + 1] += (dy / dist) * force;
+      velocities[i3 + 2] += (dz / dist) * force;
+    }
 
+    // ── Colour wave ──────────────────────────────────
+    let waveBoost = 0;
+    if (waveActive && waveTime < 3.5) {
+      const px = posAttr.array[i3];
+      const waveDist = Math.abs(px * waveDir - waveFront);
+      if (waveDist < waveWidth) {
+        waveBoost = (1 - waveDist / waveWidth);
+        // Nudge outward
+        velocities[i3 + 1] += (Math.sin(globalTime * 3 + phases[i]) * waveBoost * waveStrength);
+        velocities[i3 + 2] += (Math.cos(globalTime * 2 + phases[i]) * waveBoost * waveStrength * 0.5);
+      }
+    }
+
+    // ── Colour computation ───────────────────────────
+    // Base hue: slowly drifts per particle, global shift, wave effect
+    let hue = (globalHue + hueOffsets[i] * 0.4 + waveBoost * 80) % 360;
+
+    // Shimmer in text mode
+    let lightness = 0.58;
+    if (isTextMode) {
+      lightness = 0.52 + Math.sin(globalTime * 2.5 + phases[i]) * 0.12;
+    }
+
+    // Mouse highlight: saturate toward white-gold
+    const proximity = Math.max(0, 1 - dist / (mRadius * 1.4));
+    if (proximity > 0) {
+      hue = hue * (1 - proximity * 0.7) + 48 * proximity * 0.7;
+      lightness = lightness + proximity * 0.28;
+    }
+
+    const rgb = hslToRgb(hue / 360, 1, Math.min(lightness, 0.95));
+    colAttr.array[i3]     = rgb.r;
+    colAttr.array[i3 + 1] = rgb.g;
+    colAttr.array[i3 + 2] = rgb.b;
+
+    // ── Physics ──────────────────────────────────────
+    velocities[i3]     *= friction;
+    velocities[i3 + 1] *= friction;
+    velocities[i3 + 2] *= friction;
+
+    posAttr.array[i3]     += velocities[i3];
+    posAttr.array[i3 + 1] += velocities[i3 + 1];
+    posAttr.array[i3 + 2] += velocities[i3 + 2];
+
+    // Lerp toward target (eased)
+    const lx = tx - posAttr.array[i3];
+    const ly = ty - posAttr.array[i3 + 1];
+    const lz = tz - posAttr.array[i3 + 2];
+    posAttr.array[i3]     += lx * lerpSpd;
+    posAttr.array[i3 + 1] += ly * lerpSpd;
+    posAttr.array[i3 + 2] += lz * lerpSpd;
+  }
+
+  // Deactivate wave after it passes
+  if (waveActive && waveTime > 3.5) waveActive = false;
+
+  posAttr.needsUpdate = true;
+  colAttr.needsUpdate = true;
+
+  // Rotation
+  if (!isTextMode) {
+    pointsObj.rotation.y += 0.0025;
+    pointsObj.rotation.x  = Math.sin(globalTime * 0.12) * 0.06;
+  } else {
+    pointsObj.rotation.y *= 0.93;
+    pointsObj.rotation.x *= 0.93;
+  }
+
+  // Cursor ring color sync
+  const rHue = (globalHue) % 360;
+  cursorDot.style.background  = `hsl(${rHue},100%,65%)`;
+  cursorDot.style.boxShadow   = `0 0 14px 4px hsl(${rHue},100%,65%)`;
+  cursorRing.style.background = `radial-gradient(circle, hsla(${rHue},100%,60%,0.07) 0%, transparent 70%)`;
+
+  renderer.render(scene, camera);
+}
+
+// ── UI interactions ───────────────────────────────────────────
+function handleTransform() {
+  const val = textInput.value.trim();
+  if (!val) return;
+  textToPoints(val);
+  statusLine.textContent = `RENDERING: ${val.toUpperCase()}`;
+  statusLine.style.color = 'rgba(0,242,255,0.5)';
+  resetBtn.classList.add('visible');
+}
+
+function handleReset() {
+  textInput.value = '';
+  createSphere();
+  statusLine.textContent = 'SPHERE FORMATION ACTIVE';
+  statusLine.style.color = '';
+  resetBtn.classList.remove('visible');
+  triggerWave();
+}
+
+transformBtn.addEventListener('click', handleTransform);
+resetBtn.addEventListener('click', handleReset);
+textInput.addEventListener('keypress', e => {
+  if (e.key === 'Enter') handleTransform();
+});
+textInput.addEventListener('input', () => {
+  if (!isTextMode) return;
+  if (!textInput.value.trim()) handleReset();
+});
+
+// Hover cursor style
+[transformBtn, resetBtn, textInput].forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursorDot.style.transform = 'translate(-50%,-50%) scale(2.5)';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursorDot.style.transform = 'translate(-50%,-50%) scale(1)';
+  });
+});
+
+// ── Resize ────────────────────────────────────────────────────
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ── Boot ──────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    loadingEl.classList.add('hidden');
+    setTimeout(() => loadingEl.style.display = 'none', 900);
+    animate();
+    triggerWave();
+  }, 1400);
+});
+</script>
 </body>
 </html>
